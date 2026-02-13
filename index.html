@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Кохання 💖</title>
+
+<style>
+:root{
+  --pad: 20px;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  height: 100svh;
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  /* Градієнт у кольорах прапору Іспанії */
+  background: linear-gradient(
+    135deg,
+    #AA151B 0%,
+    #F1BF00 50%,
+    #AA151B 100%
+  );
+
+  font-family: 'Segoe UI', sans-serif;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right)
+           env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+
+.container {
+  text-align: center;
+  transform: translateY(-80px);
+  padding: 0 16px;
+}
+
+.gif {
+  display: block;
+  width: min(260px, 70vw);
+  height: auto;
+  margin: 0 auto 18px auto;
+  border-radius: 14px;
+  box-shadow: 0 14px 30px rgba(0,0,0,0.25);
+}
+
+h1 {
+  font-size: clamp(1.7rem, 5vw, 2.6rem);
+  line-height: 1.15;
+  color: #fff;
+  margin: 0;
+  text-shadow: 0 6px 18px rgba(0,0,0,0.18);
+}
+
+.btn {
+  padding: 14px 28px;
+  font-size: 18px;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+  position: absolute;
+  z-index: 5;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.yes {
+  background: #AA151B;
+  color: white;
+}
+
+.no {
+  background: #fff;
+  color: #AA151B;
+}
+
+.btn:hover {
+  transform: scale(1.05);
+}
+
+.btn:active {
+  transform: scale(0.95);
+}
+
+@media (max-width: 480px) {
+  .container {
+    transform: translateY(-60px);
+  }
+
+  .gif {
+    width: min(220px, 78vw);
+    margin-bottom: 14px;
+  }
+
+  h1 {
+    font-size: clamp(1.35rem, 6vw, 2rem);
+  }
+
+  .btn {
+    padding: 12px 20px;
+    font-size: 16px;
+  }
+}
+
+@media (hover: none) {
+  .btn:hover { transform: none; }
+}
+</style>
+</head>
+
+<body>
+  <div class="container">
+    <img class="gif" src="minion-minion-loves.gif" alt="міньйон закоханий" />
+    <h1>¿Quieres ser mi valentine? 💖</h1>
+  </div>
+
+  <button id="yesBtn" class="btn yes">Sí 💘</button>
+  <button id="noBtn" class="btn no">No 🙈</button>
+
+<script>
+const yesBtn = document.getElementById("yesBtn");
+const noBtn  = document.getElementById("noBtn");
+
+function placeInitialButtons() {
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+
+  yesBtn.style.left = (w * 0.35) + "px";
+  yesBtn.style.top  = (h * 0.60) + "px";
+
+  noBtn.style.left  = (w * 0.60) + "px";
+  noBtn.style.top   = (h * 0.60) + "px";
+}
+
+placeInitialButtons();
+window.addEventListener("resize", placeInitialButtons);
+
+yesBtn.onclick = () => {
+  window.location.href = "love18/index.html";
+};
+
+function moveButton() {
+  const padding = 20;
+
+  const maxX = window.innerWidth  - noBtn.offsetWidth  - padding;
+  const maxY = window.innerHeight - noBtn.offsetHeight - padding;
+
+  const x = Math.random() * maxX;
+  const y = Math.random() * maxY;
+
+  noBtn.style.left = x + "px";
+  noBtn.style.top  = y + "px";
+}
+
+noBtn.addEventListener("mouseenter", moveButton);
+noBtn.addEventListener("click", (e) => {
+  e.preventDefault();
+  moveButton();
+});
+noBtn.addEventListener("touchstart", (e) => {
+  e.preventDefault();
+  moveButton();
+}, { passive: false });
+</script>
+</body>
+</html>

@@ -1,0 +1,387 @@
+<!doctype html>
+<html lang="uk">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0, viewport-fit=cover" />
+<title>Караоке 💖</title>
+
+<style>
+  :root{
+    --spain-red:#AA151B;
+    --spain-yellow:#F1BF00;
+    --energy: 0;          /* 0..1 */
+    --karaoke: 0;         /* 0..1 */
+  }
+
+  *{ box-sizing:border-box; }
+
+  body{
+    margin:0;
+    height:100svh;
+    overflow:hidden;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right)
+             env(safe-area-inset-bottom) env(safe-area-inset-left);
+
+    background:
+      radial-gradient(1200px 900px at 20% 20%, rgba(255,255,255,0.18), rgba(255,255,255,0) 60%),
+      linear-gradient(135deg, var(--spain-red) 0%, var(--spain-yellow) 50%, var(--spain-red) 100%);
+    background-size: 160% 160%, 200% 200%;
+    background-position: 50% 50%, 50% 50%;
+  }
+
+  #hearts{
+    position:absolute;
+    inset:0;
+    width:100%;
+    height:100%;
+    pointer-events:none;
+  }
+
+  .ui{
+    position:relative;
+    z-index:2;
+    width:min(980px, 92vw);
+    text-align:center;
+    padding: 20px 16px;
+  }
+
+  h1{
+    margin:0 0 10px 0;
+    color:#fff;
+    font-size: clamp(1.2rem, 4.6vw, 2.2rem);
+    text-shadow: 0 10px 24px rgba(0,0,0,.22);
+  }
+
+  .karaokeBox{
+    position:relative;
+    display:block;
+    width: min(920px, 92vw);
+    margin: 0 auto;
+    padding: 14px 18px;
+    border-radius: 18px;
+    background: rgba(0,0,0,0.22);
+    backdrop-filter: blur(6px);
+    box-shadow: 0 14px 30px rgba(0,0,0,0.18);
+    overflow:hidden;
+  }
+
+  .lineBase, .lineHi{
+    display:block;
+    font-weight: 900;
+    font-style: italic;
+    letter-spacing: 0.2px;
+    font-size: clamp(1.05rem, 4.5vw, 2.05rem);
+    line-height: 1.25;
+    white-space: pre-wrap;
+    word-break: break-word;
+    text-shadow: 0 10px 24px rgba(0,0,0,.18);
+  }
+
+  .lineBase{ color: rgba(255,255,255,0.86); }
+
+  /* ✅ ФІКС: підсвітка через clip-path, без scaleX (текст не “з’їжджає”) */
+  .lineHi{
+    position:absolute;
+    left: 18px;
+    right: 18px;
+    top: 14px;
+    bottom: 14px;
+
+    color: #fff;
+    pointer-events:none;
+
+    /* clip-path заповнюємо зліва направо */
+    clip-path: inset(0 calc(100% - (var(--karaoke) * 100%)) 0 0);
+    filter: drop-shadow(0 12px 24px rgba(0,0,0,0.18));
+  }
+
+  /* 💥 пульсація на приспіві */
+  .pulse{
+    animation: pulse 0.55s ease-in-out infinite;
+  }
+  @keyframes pulse{
+    0%   { transform: translateZ(0) scale(1); }
+    50%  { transform: translateZ(0) scale(calc(1 + (var(--energy) * 0.08))); }
+    100% { transform: translateZ(0) scale(1); }
+  }
+
+  /* хінт “tap to enable sound” */
+  .tap{
+    margin-top: 12px;
+    display:inline-block;
+    color: rgba(255,255,255,0.95);
+    font-weight: 800;
+    background: rgba(0,0,0,0.18);
+    padding: 10px 14px;
+    border-radius: 12px;
+    backdrop-filter: blur(6px);
+    box-shadow: 0 10px 22px rgba(0,0,0,0.16);
+  }
+  .tap.hidden{ display:none; }
+</style>
+</head>
+
+<body>
+  <canvas id="hearts"></canvas>
+
+  <div class="ui">
+    <h1>Eres mi amor 💖</h1>
+
+    <div id="karaokeBox" class="karaokeBox">
+      <span id="lineBase" class="lineBase">Завантажую пісню…</span>
+      <span id="lineHi" class="lineHi">Завантажую пісню…</span>
+    </div>
+
+    <div id="tapHint" class="tap hidden">Натисни будь-де, щоб увімкнути звук 🔊</div>
+  </div>
+
+<script>
+/**
+ * Вимоги:
+ * - старт пісні автоматично
+ * - старт лірики з 13 секунди
+ * - прибрати контролі
+ * - fix “doubling”: clip-path замість scaleX
+ */
+
+const AUDIO_SRC = "assets/alabama.mp3";
+const START_AT = 0;
+
+const OFFSET = 13;
+const LYRICS = [
+  { t: 0.0 + OFFSET,  part:"intro",  text:"Eh-eh, eh-eh, eh-eh, eh-eh" },
+  { t: 7.5 + OFFSET,  part:"verse",  text:"Otro sunset bonito que veo en San Juan" },
+  { t: 11.5 + OFFSET, part:"verse",  text:"Disfrutando de todas esas cosas que extrañan los que se van (Van, van)" },
+  { t: 16.0 + OFFSET, part:"verse",  text:"Disfrutando de noche' de esas que ya no se dan (Dan, dan)" },
+  { t: 20.0 + OFFSET, part:"verse",  text:"Que ya no se dan (Dan)" },
+  { t: 22.5 + OFFSET, part:"verse",  text:"Pero queriendo volver a la última vez" },
+  { t: 25.5 + OFFSET, part:"verse",  text:"Que a los ojos te miré" },
+  { t: 27.5 + OFFSET, part:"verse",  text:"Y contarte las cosas que no te conté (Te parece' a mi crush, jaja)" },
+  { t: 32.0 + OFFSET, part:"verse",  text:"Y tirarte la' foto' que no te tiré" },
+  { t: 55.0 + OFFSET, part:"chorus", text:"Debí tirar más fotos de cuando te tuve" },
+  { t: 60.0 + OFFSET, part:"chorus", text:"Debí darte más beso' y abrazo' las vece' que pude" },
+  { t: 66.0 + OFFSET, part:"chorus", text:"Ey, ojalá que los mío' nunca se muden" },
+  { t: 71.0 + OFFSET, part:"chorus", text:"Y si hoy me emborracho, pues que me ayuden" },
+
+  { t: 90.0 + OFFSET, part:"verse",  text:"Ey, hoy voy a estar con abuelo to'l día, jugando dominó" },
+  { t: 115.0 + OFFSET, part:"talk",   text:"Gente, lo' quiero con cojone', los amo... Zumba" },
+  { t: 155.0 + OFFSET, part:"outro",  text:"Debí tirar más fotos de cuando te tuve" },
+];
+
+let rafId = null;
+
+// UI
+const karaokeBox = document.getElementById("karaokeBox");
+const baseEl = document.getElementById("lineBase");
+const hiEl = document.getElementById("lineHi");
+const tapHint = document.getElementById("tapHint");
+
+// Audio
+const audio = new Audio(AUDIO_SRC);
+audio.loop = true;
+audio.preload = "auto";
+
+// ✅ без контролів: задаємо дефолт
+let baseVolume = 0.25;   // 0..1
+let autoVolMul = 1.0;
+
+let idx = 0;
+
+// псевдо-біт
+const BPM = 96;
+const BEAT = 60 / BPM;
+let energy = 0;
+
+// Hearts canvas
+const heartsCanvas = document.getElementById("hearts");
+const hctx = heartsCanvas.getContext("2d");
+let W = 0, H = 0;
+
+function resizeCanvas(){
+  W = heartsCanvas.width  = window.innerWidth;
+  H = heartsCanvas.height = window.innerHeight;
+}
+window.addEventListener("resize", resizeCanvas);
+resizeCanvas();
+
+const hearts = [];
+function spawnHeart(strength=1){
+  const x = W * (0.35 + Math.random()*0.30);
+  const y = H + 30;
+  hearts.push({
+    x, y,
+    vx: (Math.random()-0.5) * 0.6 * strength,
+    vy: -(1.8 + Math.random()*1.8) * strength,
+    r: 10 + Math.random()*10,
+    a: 1,
+    rot: Math.random()*Math.PI*2,
+    vr: (Math.random()-0.5) * 0.08,
+    hue: 350 + Math.random()*20
+  });
+}
+function drawHeart(p){
+  hctx.save();
+  hctx.translate(p.x, p.y);
+  hctx.rotate(p.rot);
+  hctx.globalAlpha = p.a;
+  hctx.fillStyle = `hsl(${p.hue}, 90%, 65%)`;
+  const s = p.r;
+  hctx.beginPath();
+  hctx.moveTo(0, s*0.35);
+  hctx.bezierCurveTo(-s*0.9, s*0.05, -s*0.7, -s*0.9, 0, -s*0.35);
+  hctx.bezierCurveTo(s*0.7, -s*0.9, s*0.9, s*0.05, 0, s*0.35);
+  hctx.closePath();
+  hctx.fill();
+  hctx.restore();
+}
+function stepHearts(){
+  hctx.clearRect(0,0,W,H);
+  for(let i=hearts.length-1;i>=0;i--){
+    const p = hearts[i];
+    p.x += p.vx;
+    p.y += p.vy;
+    p.vy += 0.012;
+    p.rot += p.vr;
+    p.a -= 0.006 + energy*0.004;
+    drawHeart(p);
+    if(p.a <= 0 || p.y < -80) hearts.splice(i,1);
+  }
+}
+
+// helpers
+function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
+
+function findIndexByTime(t){
+if (t < 13) return -1;
+if (t >= 13 && t < LYRICS[1].t) return 0; 
+
+
+  let i = 0;
+  for (let k = 0; k < LYRICS.length; k++){
+    if (t >= LYRICS[k].t) i = k;
+    else break;
+  }
+  return i;
+}
+
+function lineProgress(t, i){
+  const cur = LYRICS[i];
+  const next = LYRICS[i+1];
+  if(!next) return 1;
+  const dur = Math.max(0.001, next.t - cur.t);
+  return clamp((t - cur.t) / dur, 0, 1);
+}
+function getAutoVolumeMul(part){
+  switch(part){
+    case "chorus": return 1.15;
+    case "talk":   return 0.95;
+    case "outro":  return 1.05;
+    default:       return 1.00;
+  }
+}
+function applyVolume(){
+  audio.volume = clamp(baseVolume * autoVolMul, 0, 1);
+}
+function updateBackground(t){
+  const drift  = (Math.sin(t*0.35) * 14) + (energy * 18);
+  const drift2 = (Math.cos(t*0.28) * 18) + (energy * 22);
+  document.body.style.backgroundPosition = `${50+drift}% ${50-drift2}%, ${50-drift2}% ${50+drift}%`;
+}
+
+function tick(){
+  const t = audio.currentTime || 0;
+
+  idx = findIndexByTime(t);
+
+  if (idx === -1) {
+  baseEl.textContent = "";
+  hiEl.textContent = "";
+  document.documentElement.style.setProperty("--karaoke", "0");
+  stepHearts();
+  updateBackground(t);
+  rafId = requestAnimationFrame(tick); // ✅ ПРОДОВЖУЄМО ЦИКЛ
+  return;
+}
+
+
+const cur = LYRICS[idx];
+
+
+  // ✅ фікс “doubling”: тепер base + hi однакові, hi просто кліпиться, не масштабується
+  baseEl.textContent = cur.text;
+  hiEl.textContent   = cur.text;
+
+  const p = lineProgress(t, idx);
+  document.documentElement.style.setProperty("--karaoke", String(p));
+
+  autoVolMul = getAutoVolumeMul(cur.part);
+  applyVolume();
+
+  const beatPhase = (t % BEAT) / BEAT;
+  const beatPulse = Math.exp(-6 * beatPhase);
+
+  const partBoost = (cur.part === "chorus") ? 1.0 : 0.55;
+  energy = clamp((0.25 + beatPulse * 0.85) * partBoost, 0, 1);
+
+  document.documentElement.style.setProperty("--energy", String(energy));
+  karaokeBox.classList.toggle("pulse", cur.part === "chorus");
+
+  if(beatPhase < 0.08){
+    const strength = 0.9 + energy*0.9;
+    const count = (cur.part === "chorus") ? 2 : 1;
+    for(let i=0;i<count;i++) spawnHeart(strength);
+  }
+
+  stepHearts();
+  updateBackground(t);
+
+  rafId = requestAnimationFrame(tick);
+}
+
+function startTick(){
+  if(rafId) cancelAnimationFrame(rafId);
+  rafId = requestAnimationFrame(tick);
+}
+
+// ✅ Автостарт: спроба одразу + fallback "tap anywhere"
+async function startAudioAt13() {
+  try {
+    // важливо: інколи set currentTime до loadedmetadata
+    if (audio.readyState >= 1) {
+      audio.currentTime = START_AT;
+    } else {
+      audio.addEventListener("loadedmetadata", () => {
+        audio.currentTime = START_AT;
+      }, { once: true });
+    }
+
+    await audio.play();
+    tapHint.classList.add("hidden");
+    startTick();
+  } catch (e) {
+    // autoplay blocked — покажемо підказку
+    tapHint.classList.remove("hidden");
+    console.warn("Autoplay blocked. User gesture required.", e);
+  }
+}
+
+// клік будь-де — запускає, якщо autoplay заблоковано
+function gestureStart() {
+  startAudioAt13();
+  window.removeEventListener("pointerdown", gestureStart);
+  window.removeEventListener("touchstart", gestureStart);
+}
+window.addEventListener("pointerdown", gestureStart, { once: true });
+window.addEventListener("touchstart", gestureStart, { once: true, passive: true });
+
+// старт одразу при завантаженні
+window.addEventListener("load", () => {
+  startAudioAt13();
+});
+</script>
+</body>
+</html>
